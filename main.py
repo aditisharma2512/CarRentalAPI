@@ -125,11 +125,16 @@ class Booking(Resource):
         selected_car = None
         car_type = request.args.get('car')
         date_format = '%d-%m-%Y'
+        today = datetime.now().date()
         try:
-            start_date = datetime.strptime(request.args.get('start_date'), date_format)
-            end_date = datetime.strptime(request.args.get('end_date'), date_format)
-        except ValueError:
+            start_date = datetime.strptime(request.args.get('start_date'), date_format).date()
+            end_date = datetime.strptime(request.args.get('end_date'), date_format).date()
+            if start_date < today or end_date < start_date:
+                raise ValueError
+        except TypeError:
             return 'Invalid date format please use dd-mm-yyyy'
+        except ValueError:
+            return 'Invalid dates provided'
         if car_type not in Cars.TYPES:
             return 'Invalid car type, please enter one from ' + str(Cars.TYPES)
         car_list = []
@@ -162,8 +167,47 @@ class Booking(Resource):
         return "Booking " + str(booking_id) + " Added Successfully"
 
     def patch(self):
-        today = datetime.now()
-        return str(today)
+        booking_id = request.args.get('id')
+        request_type = request.args.get('request')
+        if request_type == 'pick_up':
+            found = False
+            today = datetime.now().date()
+            for booking in Booking.bookings:
+                if booking['booking_id'] == int(booking_id):
+                    if booking['status'] == 'completed':
+                        return 'Booking has already been completed'
+                    start_date = booking['start_date']
+                    found = True
+                    if today <= start_date:
+                        return 'Booking has not yet started, you can pickup on or after ' + str(start_date)
+                    if booking['status'] != 'new':
+                        return 'Booking has already been picked up/completed'
+                    else:
+                        booking['status'] = 'in_progress'
+            if not found:
+                return 'Booking ' + str(booking_id) + ' not found'
+            return 'Booking ' + str(booking_id) + ' successfully registered for pick up'
+        elif request_type == 'drop_off':
+            found = False
+            today = datetime.now().date()
+            for booking in Booking.bookings:
+                if booking['booking_id'] == int(booking_id):
+                    end_date = booking['end_date']
+                    start_date = booking['start_date']
+                    found = True
+                    if booking['status'] != 'in_progress':
+                        return 'Booking has not yet been picked up or completed'
+                    else:
+                        booking['status'] = 'completed'
+                    if today >= end_date:
+                        return 'Drop off date passed, you had to drop off on or before ' + str(end_date)
+                    elif today <= start_date:
+                        return 'Drop off date cannot be before start date'
+            if not found:
+                return 'Booking ' + str(booking_id) + ' not found'
+            return 'Booking ' + str(booking_id) + ' successfully registered for drop off'
+        else:
+            return 'Invalid request type'
 
 
 api.add_resource(Customer, '/customers')
