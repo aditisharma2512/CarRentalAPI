@@ -1,3 +1,14 @@
+"""
+This file contains the classes for the RentAPI. The API uses GET, POST and PATCH requests to
+retrieve/add/manipulate data. The data gets stored in python dictionaries and NOT a database, as
+requested in the Coding Challenge Sheet.
+The return statements are used to inform about any errors that may exist in the data
+being sent
+"""
+
+__author__ = "Aditi Sharma"
+__modified__ = "15.06.2020"
+
 from flask import Flask, request
 from flask_restful import Resource, Api
 import json
@@ -7,13 +18,20 @@ app = Flask(__name__)
 api = Api(app)
 
 
+# The home page of the API
 @app.route('/')
 def api_root():
-    return '<h1>Welcome to EURent</h1>'
+    return '<h1>Welcome to EURent</h1><br /> <hr>' \
+           '<h3>EURent is a company which has as its main activity the renting of cars to its customers. The' \
+           'company has many fleet locations with many parking lots all over the country, where these cars' \
+           'can be picked up and dropped off. </h3>'
 
 
 class Cars(Resource):
-    TYPES = ['economic', 'standard', 'premium']
+    """
+    This class creates Cars to be added to the EURent system. The class handles get and post requests.
+    """
+    TYPES = ['economic', 'standard', 'premium']  # A class of a car can only belong to one of these car type values
     cars = []
     with open('cars.csv', encoding='utf-8') as fn:
         lines = fn.readlines()
@@ -28,9 +46,17 @@ class Cars(Resource):
         count += 1
 
     def get(self):
+        """
+        GET for the class.
+        :return: Returns all the cars in a JSON format
+        """
         return json.dumps(self.cars)
     
     def post(self):
+        """
+        POST for the class. Adds a new car to the cars list according to the values sent as args
+        :return: Message
+        """
         model = request.args.get('model')
         license_plate = request.args.get('license_plate')
         type = request.args.get('type')
@@ -46,11 +72,14 @@ class Cars(Resource):
         self.cars.append(car_dict)
         return "Added Car Successfully"
 
-        
-
     @staticmethod
     @app.route('/cars/<model>')
     def get_car_by_model(model):
+        """
+        GET method for the car class, but with model being passed as a parameter
+        :param model: Model of the car being searched
+        :return: Details of the car in a JSON format
+        """
         to_return = []
         for entry in Cars.cars:
             if entry['model'] == model:
@@ -59,17 +88,31 @@ class Cars(Resource):
 
 
 class Customer(Resource):
+    """
+    This class contains the information about all the customers for EURent. This class handles
+    GET and POST requests
+    """
     customers = [{'ID': 1, 'name': 'Harvey Specter', 'mobile': '0123456789', 'bookings': 0},
                  {'ID': 2, 'name': 'Mike Ross', 'mobile': '0112345678', 'bookings': 0},
                  {'ID': 3, 'name': 'Louis Litt', 'mobile': '0111234567', 'bookings': 0},
                  {'ID': 4, 'name': 'Jessica Pearson', 'mobile': '0111123456', 'bookings': 0},
                  {'ID': 5, 'name': 'Robert Zane', 'mobile': '0111112345', 'bookings': 0}]
+
     def get(self):
+        """
+        GET method for the class.
+        :return: returns all the customers in a JSON format
+        """
         return json.dumps(self.customers)
 
     @staticmethod
     @app.route('/customers/<name>')
     def get_customer_by_name(name):
+        """
+        GET method for the class but by customer name as an argument
+        :param name: name of the customer being searched
+        :return: the records of the customers in a JSON format
+        """
         to_return = []
         for entry in Customer.customers:
             if entry['name'] == name:
@@ -77,6 +120,10 @@ class Customer(Resource):
         return json.dumps(to_return)
 
     def post(self):
+        """
+        POST method for the class. Adds a new customer to the list according to the values provided
+        :return: Message
+        """
         max_id = 0
         for entry in self.customers:
             if entry['ID'] > max_id:
@@ -93,14 +140,26 @@ class Customer(Resource):
 
 
 class Booking(Resource):
+    """
+    This class handles all the bookings. This class handles the GET, POST and PATCH methods.
+    """
     bookings = []
 
     def get(self):
+        """
+        GET method for the class.
+        :return: Returns a list of all bookings in a JSON format
+        """
         return json.dumps(self.bookings, default=str)
 
     @staticmethod
     @app.route('/booking/searchbyid/<id>')
     def get_booking_by_id(id):
+        """
+        GET method for the class but with ID given as a parameter
+        :param id: ID to be searched
+        :return: booking, if found. Otherwise, return a message
+        """
         for booking in Booking.bookings:
             if booking['booking_id'] == int(id):
                 return booking
@@ -109,6 +168,11 @@ class Booking(Resource):
     @staticmethod
     @app.route('/booking/searchbycustomer/<name>')
     def get_bookings_by_customer_name(name):
+        """
+        GET method for the class but with customer name given as a parameter
+        :param name: Name to be searched
+        :return: bookings for the customer in a JSON format
+        """
         customer_bookings = []
         for booking in Booking.bookings:
             customer = booking['customer']
@@ -120,7 +184,12 @@ class Booking(Resource):
         else:
             return json.dumps(customer_bookings)
 
+    # TODO: Try modularising
     def post(self):
+        """
+        POST method for the class. Adds a new booking to the bookings list
+        :return: Message
+        """
         booking_id = id(self)
         selected_car = None
         car_type = request.args.get('car')
@@ -166,6 +235,7 @@ class Booking(Resource):
                                  'start_date': start_date, 'end_date': end_date, 'status': status})
         return "Booking " + str(booking_id) + " Added Successfully"
 
+    # TODO: Try modularising
     def patch(self):
         booking_id = request.args.get('id')
         request_type = request.args.get('request')
