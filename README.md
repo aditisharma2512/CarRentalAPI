@@ -30,6 +30,12 @@ pip install Flask-API
 ```
 (Hint: Try using --user if there are permission issues)
 
+**4. Flask-RESTful**
+Flask-RESTful needs to be installed on top of the Flask framework on the machine. This can be done by writing the following code on the command prompt on windows or Terminal or Macintosh
+```
+pip install flask-restful
+```
+
 ### Execution
 
 Please use the following steps to execute the program
