@@ -169,6 +169,11 @@ The POST request for this endpoint will add a new booking to the list of booking
 - start_date: The date when the booking starts (must be after today's date)
 - end_date: The date when the booking ends (must be after the start date and today's date)
 
+An example of a successful post is as below: 
+```
+http://127.0.0.1:5002/booking?car=economic&customer=Harvey Specter&start_date=16-06-2020&end_date=24-06-2020
+```
+
 **Bookings cannot be made if no cars of that type are available in the specified date range**
 
 #### PATCH
