@@ -174,7 +174,7 @@ class Booking(Resource):
         """
         for booking in Booking.bookings:
             if booking['booking_id'] == int(id):
-                return booking
+                return json.dumps(booking, default=str), status.HTTP_200_OK
         return {"message": "No booking found for this id"}, status.HTTP_200_OK
 
     @staticmethod
@@ -194,7 +194,7 @@ class Booking(Resource):
         if len(customer_bookings) <= 0:
             return {"message": "No bookings found for customer " + name}, status.HTTP_200_OK
         else:
-            return json.dumps(customer_bookings), status.HTTP_200_OK
+            return json.dumps(customer_bookings, default=str), status.HTTP_200_OK
 
     def fix_date(self, date_str):
         """
@@ -292,7 +292,7 @@ class Booking(Resource):
                     start_date = booking['start_date']
                     end_date = booking['end_date']
                     found = True
-                    if self.today <= start_date and self.today <= end_date:
+                    if self.today < start_date and self.today < end_date:
                         return {"message": 'Booking has not yet started, you can pickup on or after ' +
                                            str(start_date)}, status.HTTP_400_BAD_REQUEST
                     # If the booking is not new, it is unavailable for pick up
@@ -321,12 +321,12 @@ class Booking(Resource):
                         booking['status'] = 'completed'
 
                     # If the end date has passed, the booking is unable to be dropped off
-                    if self.today >= end_date:
+                    if self.today > end_date:
                         return {"message": 'Drop off date passed, you had to drop off on or before ' + str(end_date)}, \
                                status.HTTP_400_BAD_REQUEST
 
                     # Cannot drop off if the drop off date is before the start date
-                    elif self.today <= start_date:
+                    elif self.today < start_date:
                         return {"message": 'Drop off date cannot be before start date'}, \
                                status.HTTP_400_BAD_REQUEST
             if not found:
