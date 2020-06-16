@@ -13,6 +13,7 @@ from flask import Flask, request
 from flask_restful import Resource, Api
 import json
 from datetime import datetime
+from flask_api import status
 
 app = Flask(__name__)
 api = Api(app)
@@ -50,8 +51,8 @@ class Cars(Resource):
         GET for the class.
         :return: Returns all the cars in a JSON format
         """
-        return json.dumps(self.cars)
-    
+        return json.dumps(self.cars), status.HTTP_200_OK
+
     def post(self):
         """
         POST for the class. Adds a new car to the cars list according to the values sent as args
@@ -61,16 +62,16 @@ class Cars(Resource):
         license_plate = request.args.get('license_plate')
         type = request.args.get('type')
         if type not in self.TYPES:
-            return "Incorrect car type. Type must belong to " + str(self.TYPES)
+            return {"message": "Incorrect car type. Must belong to " + str(self.TYPES)}, status.HTTP_400_BAD_REQUEST
         fee = request.args.get('fee')
         try:
             fee = int(fee)
         except TypeError:
-            return "Fee must be int value"
+            return {"message": "Fee must be int value"}, status.HTTP_400_BAD_REQUEST
 
         car_dict = {'model': model, 'license_plate': license_plate, 'type': type, 'fee': fee}
         self.cars.append(car_dict)
-        return "Added Car Successfully"
+        return {"message": "Added Car Successfully"}, status.HTTP_200_OK
 
     @staticmethod
     @app.route('/cars/<model>')
@@ -84,7 +85,7 @@ class Cars(Resource):
         for entry in Cars.cars:
             if entry['model'] == model:
                 to_return.append(entry)
-        return json.dumps(to_return)
+        return json.dumps(to_return), status.HTTP_200_OK
 
 
 class Customer(Resource):
@@ -103,7 +104,7 @@ class Customer(Resource):
         GET method for the class.
         :return: returns all the customers in a JSON format
         """
-        return json.dumps(self.customers)
+        return json.dumps(self.customers), status.HTTP_200_OK
 
     @staticmethod
     @app.route('/customers/<name>')
@@ -117,7 +118,7 @@ class Customer(Resource):
         for entry in Customer.customers:
             if entry['name'] == name:
                 to_return.append(entry)
-        return json.dumps(to_return)
+        return json.dumps(to_return), status.HTTP_200_OK
 
     def post(self):
         """
@@ -133,10 +134,10 @@ class Customer(Resource):
         bookings = 0
         for customer in self.customers:
             if customer['name'] == name and customer['mobile'] == mobile:
-                return "Customer already exists"
+                return {"message":"Customer already exists"}, status.HTTP_400_BAD_REQUEST
         cust_dict = {'ID': max_id+1, 'name': name, 'mobile': mobile, 'bookings': bookings}
         self.customers.append(cust_dict)
-        return "Added Customer Successfully"
+        return {"message": "Added Customer Successfully"}, status.HTTP_200_OK
 
 
 class Booking(Resource):
@@ -144,13 +145,15 @@ class Booking(Resource):
     This class handles all the bookings. This class handles the GET, POST and PATCH methods.
     """
     bookings = []
+    date_format = '%d-%m-%Y'
+    today = datetime.now().date()
 
     def get(self):
         """
         GET method for the class.
         :return: Returns a list of all bookings in a JSON format
         """
-        return json.dumps(self.bookings, default=str)
+        return json.dumps(self.bookings, default=str), status.HTTP_200_OK
 
     @staticmethod
     @app.route('/booking/searchbyid/<id>')
@@ -163,7 +166,7 @@ class Booking(Resource):
         for booking in Booking.bookings:
             if booking['booking_id'] == int(id):
                 return booking
-        return "No booking found for this id"
+        return {"message": "No booking found for this id"}, status.HTTP_200_OK
 
     @staticmethod
     @app.route('/booking/searchbycustomer/<name>')
@@ -180,32 +183,34 @@ class Booking(Resource):
                 customer_bookings.append(booking)
 
         if len(customer_bookings) <= 0:
-            return "No bookings found for customer " + name
+            return {"message": "No bookings found for customer " + name}, status.HTTP_200_OK
         else:
-            return json.dumps(customer_bookings)
+            return json.dumps(customer_bookings), status.HTTP_200_OK
 
-    # TODO: Try modularising
+    def fix_date(self, date_str):
+        try:
+            fixed_date = datetime.strptime(date_str, self.date_format).date()
+        except TypeError:
+            return None
+        else:
+            return fixed_date
+
     def post(self):
         """
         POST method for the class. Adds a new booking to the bookings list
         :return: Message
         """
         booking_id = id(self)
-        selected_car = None
         car_type = request.args.get('car')
-        date_format = '%d-%m-%Y'
-        today = datetime.now().date()
-        try:
-            start_date = datetime.strptime(request.args.get('start_date'), date_format).date()
-            end_date = datetime.strptime(request.args.get('end_date'), date_format).date()
-            if start_date < today or end_date < start_date:
-                raise ValueError
-        except TypeError:
-            return 'Invalid date format please use dd-mm-yyyy'
-        except ValueError:
-            return 'Invalid dates provided'
+        start_date = self.fix_date(request.args.get('start_date'))
+        end_date = self.fix_date(request.args.get('end_date'))
+        if not start_date or not end_date:
+            return {"message": "Invalid Dates Provided, please use dd-mm-yyyy"}, status.HTTP_400_BAD_REQUEST
+        elif start_date < self.today or end_date < start_date:
+            return {"message": 'Invalid date range provided'}, status.HTTP_400_BAD_REQUEST
         if car_type not in Cars.TYPES:
-            return 'Invalid car type, please enter one from ' + str(Cars.TYPES)
+            return {"message": 'Invalid car type, please enter one from ' + str(Cars.TYPES)}, \
+                   status.HTTP_400_BAD_REQUEST
         car_list = []
         for one_car in Cars.cars:
             if one_car['type'] == car_type:
@@ -217,7 +222,7 @@ class Booking(Resource):
                     if booking['car'] == car:
                         car_list.remove(car)
         if len(car_list) <= 0:
-            return 'No ' + str(car_type) + " cars available for this date range"
+            return {"message": 'No ' + str(car_type) + " cars available for this date range"}, status.HTTP_200_OK
         else:
             selected_car = car_list[0]
         selected_customer = None
@@ -227,57 +232,62 @@ class Booking(Resource):
                 selected_customer = one_cust
                 one_cust['bookings'] += 1
         if not selected_customer:
-            return 'Customer not found'
+            return {"message": 'Customer not found'}, status.HTTP_200_OK
         if end_date < start_date:
-            return 'End date cannot be before start date'
-        status = 'new'
+            return {"message": 'End date cannot be before start date'}, status.HTTP_400_BAD_REQUEST
+        booking_status = 'new'
         Booking.bookings.append({'booking_id': booking_id, 'customer': selected_customer, 'car': selected_car,
-                                 'start_date': start_date, 'end_date': end_date, 'status': status})
-        return "Booking " + str(booking_id) + " Added Successfully"
+                                 'start_date': start_date, 'end_date': end_date, 'status': booking_status})
+        return {"message": "Booking " + str(booking_id) + " Added Successfully"}, status.HTTP_200_OK
 
-    # TODO: Try modularising
     def patch(self):
         booking_id = request.args.get('id')
         request_type = request.args.get('request')
+
         if request_type == 'pick_up':
             found = False
-            today = datetime.now().date()
             for booking in Booking.bookings:
                 if booking['booking_id'] == int(booking_id):
                     if booking['status'] == 'completed':
-                        return 'Booking has already been completed'
+                        return {"message": 'Booking has already been completed'}, status.HTTP_400_BAD_REQUEST
                     start_date = booking['start_date']
                     found = True
-                    if today <= start_date:
-                        return 'Booking has not yet started, you can pickup on or after ' + str(start_date)
+                    if self.today <= start_date:
+                        return {"message": 'Booking has not yet started, you can pickup on or after ' +
+                                           str(start_date)}, status.HTTP_400_BAD_REQUEST
                     if booking['status'] != 'new':
-                        return 'Booking has already been picked up/completed'
+                        return {"message": 'Booking has already been picked up/completed'}, status.HTTP_400_BAD_REQUEST
                     else:
                         booking['status'] = 'in_progress'
             if not found:
-                return 'Booking ' + str(booking_id) + ' not found'
-            return 'Booking ' + str(booking_id) + ' successfully registered for pick up'
+                return {"message": 'Booking ' + str(booking_id) + ' not found'}, status.HTTP_200_OK
+            return {"message": 'Booking ' + str(booking_id) + ' successfully registered for pick up'}, \
+                status.HTTP_200_OK
+
         elif request_type == 'drop_off':
             found = False
-            today = datetime.now().date()
             for booking in Booking.bookings:
                 if booking['booking_id'] == int(booking_id):
                     end_date = booking['end_date']
                     start_date = booking['start_date']
                     found = True
                     if booking['status'] != 'in_progress':
-                        return 'Booking has not yet been picked up or completed'
+                        return {"message": 'Booking has not yet been picked up or completed'}, \
+                               status.HTTP_400_BAD_REQUEST
                     else:
                         booking['status'] = 'completed'
-                    if today >= end_date:
-                        return 'Drop off date passed, you had to drop off on or before ' + str(end_date)
-                    elif today <= start_date:
-                        return 'Drop off date cannot be before start date'
+                    if self.today >= end_date:
+                        return {"message": 'Drop off date passed, you had to drop off on or before ' + str(end_date)}, \
+                               status.HTTP_400_BAD_REQUEST
+                    elif self.today <= start_date:
+                        return {"message": 'Drop off date cannot be before start date'}, \
+                               status.HTTP_400_BAD_REQUEST
             if not found:
-                return 'Booking ' + str(booking_id) + ' not found'
-            return 'Booking ' + str(booking_id) + ' successfully registered for drop off'
+                return {"message": 'Booking ' + str(booking_id) + ' not found'}, status.HTTP_200_OK
+            return {"message": 'Booking ' + str(booking_id) + ' successfully registered for drop off'}, \
+                status.HTTP_200_OK
         else:
-            return 'Invalid request type'
+            return {"message": 'Invalid request type'}, status.HTTP_400_BAD_REQUEST
 
 
 api.add_resource(Customer, '/customers')
