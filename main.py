@@ -290,8 +290,9 @@ class Booking(Resource):
                     if booking['status'] == 'completed':
                         return {"message": 'Booking has already been completed'}, status.HTTP_400_BAD_REQUEST
                     start_date = booking['start_date']
+                    end_date = booking['end_date']
                     found = True
-                    if self.today <= start_date:
+                    if self.today <= start_date and self.today <= end_date:
                         return {"message": 'Booking has not yet started, you can pickup on or after ' +
                                            str(start_date)}, status.HTTP_400_BAD_REQUEST
                     # If the booking is not new, it is unavailable for pick up
