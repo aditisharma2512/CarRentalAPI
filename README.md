@@ -173,7 +173,7 @@ The PATCH request for this endpoint handles the pick-up and drop-off for the boo
 **Pick-up** <br />
 The following conditions must be met to register a pick up:
 1. Valid booking ID: The booking ID must exist 
-2. Start date must be on the day the request is being made or have already passed
+2. Start date must be on the day the pick up request is being made or have already passed
 3. The status of the booking should be new
 
 **Drop-off** <br />
