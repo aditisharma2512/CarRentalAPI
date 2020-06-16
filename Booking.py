@@ -70,8 +70,7 @@ class Booking(Resource):
         # 3. Remove the cars identified in step 2 that are booked
         # 4. Book the first available car in the list
         car_list = []
-        cars = Cars()
-        cars = cars.cars
+        cars = Cars.cars
         for one_car in cars:
             if one_car['type'] == car_type:
                 car_list.append(one_car)
@@ -90,8 +89,7 @@ class Booking(Resource):
 
         # Find the customer from the customer list
         selected_customer = None
-        customers = Customer()
-        customers = customers.customers
+        customers = Customer.customers
         customer = request.args.get('customer')
         for one_cust in customers:
             if one_cust['name'] == customer:

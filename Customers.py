@@ -9,12 +9,11 @@ class Customer(Resource):
     This class contains the information about all the customers for EURent. This class handles
     GET and POST requests
     """
-    def __init__(self):
-        self.customers = [{'ID': 1, 'name': 'Harvey Specter', 'mobile': '0123456789', 'bookings': 0},
-                     {'ID': 2, 'name': 'Mike Ross', 'mobile': '0112345678', 'bookings': 0},
-                     {'ID': 3, 'name': 'Louis Litt', 'mobile': '0111234567', 'bookings': 0},
-                     {'ID': 4, 'name': 'Jessica Pearson', 'mobile': '0111123456', 'bookings': 0},
-                     {'ID': 5, 'name': 'Robert Zane', 'mobile': '0111112345', 'bookings': 0}]
+    customers = [{'ID': 1, 'name': 'Harvey Specter', 'mobile': '0123456789', 'bookings': 0},
+                 {'ID': 2, 'name': 'Mike Ross', 'mobile': '0112345678', 'bookings': 0},
+                 {'ID': 3, 'name': 'Louis Litt', 'mobile': '0111234567', 'bookings': 0},
+                 {'ID': 4, 'name': 'Jessica Pearson', 'mobile': '0111123456', 'bookings': 0},
+                 {'ID': 5, 'name': 'Robert Zane', 'mobile': '0111112345', 'bookings': 0}]
 
     def get(self):
         """

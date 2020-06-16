@@ -17,20 +17,18 @@ class Cars(Resource):
     This class creates Cars to be added to the EURent system. The class handles get and post requests.
     """
     TYPES = ['economic', 'standard', 'premium']  # A class of a car can only belong to one of these car type values
-
-    def __init__(self):
-        self.cars = []
-        with open('cars.csv', encoding='utf-8') as fn:
-            lines = fn.readlines()
-        count = 0
-        for line in lines:
-            if count == 0:
-                pass
-            else:
-                vals = line.lstrip(' ').rstrip(' ').strip('\n').split(',')
-                self.cars.append({'model': vals[0].strip(' '), 'license_plate': vals[1].strip(' '), 'type': vals[2].strip(' '),
-                             'fee': vals[3].strip(' ')})
-            count += 1
+    cars = []
+    with open('cars.csv', encoding='utf-8') as fn:
+        lines = fn.readlines()
+    count = 0
+    for line in lines:
+        if count == 0:
+            pass
+        else:
+            vals = line.lstrip(' ').rstrip(' ').strip('\n').split(',')
+            cars.append({'model': vals[0].strip(' '), 'license_plate': vals[1].strip(' '), 'type': vals[2].strip(' '),
+                         'fee': vals[3].strip(' ')})
+        count += 1
 
     def get(self):
         """
@@ -76,10 +74,9 @@ class CarByModel(Resource):
         GET method for the car class, but with model being passed as a parameter
         :return: Details of the car in a JSON format
         """
-        cars = Cars()
-        cars = cars.cars
+
         to_return = []
-        for entry in cars:
+        for entry in Cars.cars:
             if entry['model'] == model:
                 to_return.append(entry)
         return json.dumps(to_return), status.HTTP_200_OK
