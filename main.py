@@ -59,6 +59,8 @@ class Cars(Resource):
         :return: Message
         """
         model = request.args.get('model')
+        if not model:
+            return {"message": "Car model cannot be blank"}, status.HTTP_400_BAD_REQUEST
         license_plate = request.args.get('license_plate')
         type = request.args.get('type')
         if type not in self.TYPES:
@@ -66,12 +68,17 @@ class Cars(Resource):
         fee = request.args.get('fee')
         try:
             fee = int(fee)
-        except TypeError:
-            return {"message": "Fee must be int value"}, status.HTTP_400_BAD_REQUEST
+            if fee < 0:
+                raise ValueError
+        except ValueError:
+            return {"message": "Fee must be a positive int value "}, status.HTTP_400_BAD_REQUEST
 
         car_dict = {'model': model, 'license_plate': license_plate, 'type': type, 'fee': fee}
-        self.cars.append(car_dict)
-        return {"message": "Added Car Successfully"}, status.HTTP_200_OK
+        if car_dict in self.cars:
+            return {"message": "This car already exists"}, status.HTTP_400_BAD_REQUEST
+        else:
+            self.cars.append(car_dict)
+            return {"message": "Added Car Successfully"}, status.HTTP_200_OK
 
     @staticmethod
     @app.route('/cars/<model>')
@@ -133,7 +140,9 @@ class Customer(Resource):
         mobile = request.args.get('mobile')
         bookings = 0
         for customer in self.customers:
+            # A customer is uniquely identified by their name AND mobile number
             if customer['name'] == name and customer['mobile'] == mobile:
+                # Cannot add duplicate customers
                 return {"message":"Customer already exists"}, status.HTTP_400_BAD_REQUEST
         cust_dict = {'ID': max_id+1, 'name': name, 'mobile': mobile, 'bookings': bookings}
         self.customers.append(cust_dict)
@@ -188,9 +197,14 @@ class Booking(Resource):
             return json.dumps(customer_bookings), status.HTTP_200_OK
 
     def fix_date(self, date_str):
+        """
+        Method to convert date string to date format
+        :param date_str: The string of date to be converted
+        :return: the fixed date, if successful, otherwise none
+        """
         try:
             fixed_date = datetime.strptime(date_str, self.date_format).date()
-        except TypeError:
+        except TypeError or ValueError:
             return None
         else:
             return fixed_date
@@ -202,15 +216,22 @@ class Booking(Resource):
         """
         booking_id = id(self)
         car_type = request.args.get('car')
-        start_date = self.fix_date(request.args.get('start_date'))
-        end_date = self.fix_date(request.args.get('end_date'))
-        if not start_date or not end_date:
+        try:
+            start_date = self.fix_date(request.args.get('start_date'))
+            end_date = self.fix_date(request.args.get('end_date'))
+        except ValueError:
             return {"message": "Invalid Dates Provided, please use dd-mm-yyyy"}, status.HTTP_400_BAD_REQUEST
-        elif start_date < self.today or end_date < start_date:
+        if start_date < self.today or end_date < start_date:
             return {"message": 'Invalid date range provided'}, status.HTTP_400_BAD_REQUEST
         if car_type not in Cars.TYPES:
             return {"message": 'Invalid car type, please enter one from ' + str(Cars.TYPES)}, \
                    status.HTTP_400_BAD_REQUEST
+
+        # To get the available cars, we follow the steps below:
+        # 1. Get a list of all cars of the type specified by the user
+        # 2. Check if there are any bookings for these cars in the date range specified
+        # 3. Remove the cars identified in step 2 that are booked
+        # 4. Book the first available car in the list
         car_list = []
         for one_car in Cars.cars:
             if one_car['type'] == car_type:
@@ -221,29 +242,47 @@ class Booking(Resource):
                 for car in car_list:
                     if booking['car'] == car:
                         car_list.remove(car)
+
+        # If there are no cars of this type left, return response
         if len(car_list) <= 0:
             return {"message": 'No ' + str(car_type) + " cars available for this date range"}, status.HTTP_200_OK
         else:
             selected_car = car_list[0]
+
+        # Find the customer from the customer list
         selected_customer = None
         customer = request.args.get('customer')
         for one_cust in Customer.customers:
             if one_cust['name'] == customer:
                 selected_customer = one_cust
                 one_cust['bookings'] += 1
+
+        # If the customer doesn't exist, return an error message
         if not selected_customer:
-            return {"message": 'Customer not found'}, status.HTTP_200_OK
+            return {"message": 'Customer not found'}, status.HTTP_400_BAD_REQUEST
+
+        # If the end date is BEFORE start date, return an error message
         if end_date < start_date:
             return {"message": 'End date cannot be before start date'}, status.HTTP_400_BAD_REQUEST
+
+        # Since the post method adds a new booking, the status is always new
         booking_status = 'new'
+
         Booking.bookings.append({'booking_id': booking_id, 'customer': selected_customer, 'car': selected_car,
                                  'start_date': start_date, 'end_date': end_date, 'status': booking_status})
         return {"message": "Booking " + str(booking_id) + " Added Successfully"}, status.HTTP_200_OK
 
     def patch(self):
+        """
+        Patch method for updating the fields for the booking. This method expects two arguments:
+        :arg: id: The booking ID
+        :arg: request: The type of request (pick_up, drop_off)
+        :return: Message once the operation is complete
+        """
         booking_id = request.args.get('id')
         request_type = request.args.get('request')
 
+        # If the request is to pick_up a car, run the code below
         if request_type == 'pick_up':
             found = False
             for booking in Booking.bookings:
@@ -255,6 +294,7 @@ class Booking(Resource):
                     if self.today <= start_date:
                         return {"message": 'Booking has not yet started, you can pickup on or after ' +
                                            str(start_date)}, status.HTTP_400_BAD_REQUEST
+                    # If the booking is not new, it is unavailable for pick up
                     if booking['status'] != 'new':
                         return {"message": 'Booking has already been picked up/completed'}, status.HTTP_400_BAD_REQUEST
                     else:
@@ -264,6 +304,7 @@ class Booking(Resource):
             return {"message": 'Booking ' + str(booking_id) + ' successfully registered for pick up'}, \
                 status.HTTP_200_OK
 
+        # If the request is to drop off, run the code below
         elif request_type == 'drop_off':
             found = False
             for booking in Booking.bookings:
@@ -271,14 +312,19 @@ class Booking(Resource):
                     end_date = booking['end_date']
                     start_date = booking['start_date']
                     found = True
+                    # If a booking is not in progress, it is unable to be dropped off
                     if booking['status'] != 'in_progress':
                         return {"message": 'Booking has not yet been picked up or completed'}, \
                                status.HTTP_400_BAD_REQUEST
                     else:
                         booking['status'] = 'completed'
+
+                    # If the end date has passed, the booking is unable to be dropped off
                     if self.today >= end_date:
                         return {"message": 'Drop off date passed, you had to drop off on or before ' + str(end_date)}, \
                                status.HTTP_400_BAD_REQUEST
+
+                    # Cannot drop off if the drop off date is before the start date
                     elif self.today <= start_date:
                         return {"message": 'Drop off date cannot be before start date'}, \
                                status.HTTP_400_BAD_REQUEST
