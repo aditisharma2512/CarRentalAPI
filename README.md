@@ -1,5 +1,5 @@
-# MeecoCodingChallengePart2
-Part 2 of the Meeco Coding Challenge. This task required us to create an API for a fictional Car Rental company with several requirements for the type of cars, customers and bookings.
+# Car Rental Service API
+Create an API for a fictional Car Rental company with several requirements for the type of cars, customers and bookings.
 
 
 ## Getting Started
@@ -208,7 +208,3 @@ Since this API is only built for a test server, there is currently no framework 
 ## Authors
 
 * **Aditi Sharma** - [LinkedIn](https://www.linkedin.com/in/aditisharma25/) | [Github](https://github.com/aditisharma2512)
-
-## Acknowledgments
-
-* Thank you to the team at Meeco.me for presenting the opportunity to create this project, specially Yuri Leikind and Jan Vereecken for their help and guidance.
